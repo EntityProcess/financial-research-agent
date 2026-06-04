@@ -121,7 +121,7 @@ Review generated rubrics before committing. Dexter's rubric field is Python/JSON
 
 Setup and target scripts print variable names and missing prerequisite guidance only. They must not print resolved secret values, private endpoints, or Bitwarden-derived output.
 
-Public result synchronization belongs to the downstream `financial-research-agent-eval-results` repository. Before publishing any run artifact, scan it for API keys, provider endpoints, private paths, and sensitive data.
+Public result synchronization belongs to the downstream `financial-research-agent-evals` work. Before publishing any run artifact, scan it for API keys, provider endpoints, private paths, and sensitive data.
 
 ## AgentV Friction Captured
 
