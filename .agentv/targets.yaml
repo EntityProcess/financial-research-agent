@@ -1,0 +1,47 @@
+schema: agentv-targets-v2.2
+
+targets:
+  - name: default
+    use_target: "${{ AGENT_TARGET }}"
+
+  - name: financial-research-agent
+    provider: codex
+    executable: "${{ CODEX_EXECUTABLE }}"
+    model: "${{ CODEX_MODEL }}"
+    model_reasoning_effort: "${{ CODEX_REASONING_EFFORT }}"
+    cwd: "${{ CODEX_WORKSPACE_DIR }}"
+    log_dir: "${{ CODEX_LOG_DIR }}"
+    stream_log: raw
+    grader_target: grader
+    system_prompt: |
+      You are answering public financial-research benchmark questions.
+      Use public web sources and cite the evidence you rely on when possible.
+      Do not use Dexter, Financial Datasets, private data, API keys, or paid market-data services.
+      Return a concise answer focused on the numeric facts and business events asked for.
+
+  - name: dexter-agent
+    provider: cli
+    command: bun run ./scripts/run-dexter-agent.ts --prompt {PROMPT} --output {OUTPUT_FILE}
+    cwd: ..
+    timeout_ms: 900000
+    grader_target: grader
+    healthcheck:
+      command: bun run ./scripts/setup.ts --check-only
+      cwd: ..
+      timeout_ms: 30000
+
+  - name: grader
+    use_target: "${{ GRADER_TARGET }}"
+
+  - name: openai-grader
+    provider: openai
+    base_url: "${{ OPENAI_BASE_URL }}"
+    api_key: "${{ OPENAI_API_KEY }}"
+    model: "${{ OPENAI_MODEL }}"
+
+  - name: azure-grader
+    provider: azure
+    endpoint: "${{ AZURE_OPENAI_ENDPOINT }}"
+    api_key: "${{ AZURE_OPENAI_API_KEY }}"
+    model: "${{ AZURE_DEPLOYMENT_NAME }}"
+    version: "${{ AZURE_OPENAI_API_VERSION }}"

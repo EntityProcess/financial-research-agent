@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+
+node_modules/
+.agentv/runs/
+results/
+tmp/
+
+# Dexter writes scratchpad history under its own checkout.
+.dexter/

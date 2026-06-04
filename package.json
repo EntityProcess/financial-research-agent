@@ -1,0 +1,11 @@
+{
+  "name": "financial-research-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "bun run scripts/setup.ts",
+    "generate": "bun run scripts/generate-eval-from-dexter.ts",
+    "eval": "agentv eval evals/financial-research-agent.eval.yaml --targets .agentv/targets.yaml"
+  }
+}
