@@ -68,6 +68,7 @@ Required variables for the default public-demo target:
 - `CODEX_LOG_DIR`
 - `GRADER_TARGET`
 - grader model variables for the selected grader target
+- for `GRADER_TARGET=azure`: `AZURE_OPENAI_RESPONSES_BASE_URL`, `AZURE_OPENAI_API_KEY`, and `AZURE_DEPLOYMENT_NAME`
 
 Additional variables for optional `AGENT_TARGET=dexter-agent`:
 
