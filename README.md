@@ -24,6 +24,19 @@ The committed AgentV eval keeps that fixture shape for every row in the pinned C
 
 By default, the eval does **not** run Dexter. It runs a coding/web research agent against Dexter's public golden answers, so the demo does not require `FINANCIAL_DATASETS_API_KEY`. The real `dexter-agent` target remains available as an optional compatibility target for users who have Dexter's paid data prerequisites configured.
 
+## Generated Provenance
+
+Each generated test carries metadata copied from the pinned Dexter fixture:
+
+- `source_repo`: the upstream Dexter repository URL.
+- `source_commit`: the pinned Dexter commit used to read the CSV.
+- `source_file`: the Dexter CSV path, currently `src/evals/dataset/finance_agent.csv`.
+- `source_row`: the 1-based row number in that CSV, excluding the header.
+- `question_type`: Dexter's `Question Type` value.
+- `expert_time_mins`: Dexter's `Expert time (mins)` value.
+
+Those metadata fields are source provenance only. AgentV scoring uses the generated `input`, `expected_output`, and `assertions` fields. Rubric assertions preserve Dexter rubric criteria as `criteria[].outcome`; when available in AgentV, `criteria[].operator` keeps Dexter's original `correctness` or `contradiction` grading intent instead of rewriting contradiction guards into prose.
+
 ## Prerequisites
 
 Install AgentV separately.
@@ -111,10 +124,18 @@ the optional Dexter variables above.
 After updating `DEXTER_REPO_PATH` and `DEXTER_COMMIT`, regenerate the full AgentV eval from Dexter's public CSV:
 
 ```bash
-bun run scripts/generate-eval-from-dexter.ts --out evals/financial-research-agent.eval.yaml
+bun run generate --out evals/financial-research-agent.eval.yaml
 ```
 
 Use `--sample N --out <path>` only for local experiments or quick generator checks; do not use a sampled file as the committed dataset boundary.
+
+Before committing generated eval changes, validate that the committed YAML still matches the full pinned Dexter CSV:
+
+```bash
+bun run validate:generated
+```
+
+The validation checks the Dexter checkout commit, compares `evals/financial-research-agent.eval.yaml` to freshly generated full output, and fails if the committed eval has fewer tests than the pinned CSV. That row-count guard catches accidental `--sample` output committed as the full dataset boundary.
 
 Review generated rubrics before committing. Dexter's rubric field is Python/JSON-like text, so this generator intentionally keeps the conversion conservative.
 
@@ -126,4 +147,4 @@ Public result synchronization belongs to the downstream `financial-research-agen
 
 ## AgentV Friction Captured
 
-The Dexter adaptation exposed one AgentV follow-up candidate: Dexter's rubric column has explicit `correctness` and `contradiction` operators, while AgentV's built-in `rubrics` grader accepts natural-language outcomes but has no first-class operator field for rubric criteria. This project maps contradiction criteria to "does not contradict..." rubric outcomes for now.
+The Dexter adaptation exposed one AgentV follow-up candidate: Dexter's rubric column has explicit `correctness` and `contradiction` operators. The generated eval now preserves those operators on rubric criteria so AgentV builds with rubric-operator support can apply the original Dexter intent directly.

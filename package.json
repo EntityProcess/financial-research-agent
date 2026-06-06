@@ -6,6 +6,7 @@
   "scripts": {
     "setup": "bun run scripts/setup.ts",
     "generate": "bun run scripts/generate-eval-from-dexter.ts",
+    "validate:generated": "bun run scripts/generate-eval-from-dexter.ts --check --out evals/financial-research-agent.eval.yaml",
     "eval": "agentv eval evals/financial-research-agent.eval.yaml --targets .agentv/targets.yaml"
   }
 }
