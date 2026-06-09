@@ -21,7 +21,7 @@ Dexter's own eval flow at that commit uses:
 - an LLM-as-judge correctness check, with CSV rubric metadata containing
   `correctness` and `contradiction` criteria
 
-The committed AgentV eval keeps that fixture shape for every row in the pinned CSV: Dexter questions become AgentV `input`, Dexter answers become `expected_output`, and Dexter rubric entries become per-test AgentV `llm-grader` rubrics. Each generated rubric preserves Dexter's operator intent: `correctness` criteria must be positively supported, while `contradiction` criteria act as guards against incompatible claims.
+The committed AgentV eval keeps the question/answer fixture shape for every row in the pinned CSV: Dexter questions become AgentV `input`, and Dexter answers become `expected_output`. Dexter's runtime evaluator ignores the CSV `Rubric` column, but this project intentionally preserves that metadata as a custom input object for `graders/llm-judge.ts`, a reusable LLM-judge code grader that evaluates all rubric entries for a test in one judge call.
 
 By default, the eval does **not** run Dexter. It runs a coding/web research agent against Dexter's public golden answers, so the demo does not require `FINANCIAL_DATASETS_API_KEY`. The real `dexter-agent` target remains available as an optional compatibility target for users who have Dexter's paid data prerequisites configured.
 
@@ -127,4 +127,4 @@ Public result synchronization belongs to the downstream `financial-research-agen
 
 ## AgentV Composition Note
 
-The Dexter adaptation does not require a custom AgentV grader or dataset-specific schema field. Existing per-test `llm-grader` rubrics plus AgentV's rubric operator guidance express the needed correctness and contradiction behavior.
+The Dexter adaptation does not require AgentV core schema changes. `graders/llm-judge.ts` is a reusable adapter: each eval assertion provides a custom prompt and custom input object, and the adapter calls the configured AgentV grader target through `target.max_calls`. For Dexter, that input object preserves the CSV rubric entries in their native `{ operator, criteria }` shape so the prompt can distinguish correctness checks from contradiction guards.

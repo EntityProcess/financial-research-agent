@@ -96,9 +96,7 @@ function parseRubricCriteria(raw: string): RubricCriterion[] {
     }
   }
 
-  const correctness = criteria.filter((criterion) => criterion.operator === 'correctness').slice(0, 5);
-  const contradiction = criteria.find((criterion) => criterion.operator === 'contradiction');
-  return contradiction ? [...correctness, contradiction] : correctness;
+  return criteria;
 }
 
 function block(value: string, indent = 6): string {
@@ -106,7 +104,10 @@ function block(value: string, indent = 6): string {
   return value
     .trim()
     .split('\n')
-    .map((line) => `${spaces}${line}`)
+    .map((line) => {
+      const trimmed = line.trimEnd();
+      return trimmed ? `${spaces}${trimmed}` : '';
+    })
     .join('\n');
 }
 
@@ -118,28 +119,41 @@ function slug(value: string): string {
     .slice(0, 72);
 }
 
+function yamlString(value: string, indent = 12): string {
+  const text = value.trim();
+  if (!text.includes('\n')) {
+    return JSON.stringify(text);
+  }
+
+  const spaces = ' '.repeat(indent);
+  return `|\n${text
+    .split('\n')
+    .map((line) => {
+      const trimmed = line.trimEnd();
+      return trimmed ? `${spaces}${trimmed}` : '';
+    })
+    .join('\n')}`;
+}
+
 function render(rows: readonly Row[]): string {
   const tests = rows
     .map((row, index) => {
       const criteria = parseRubricCriteria(row.rubric);
-      const rubricItems =
+      const customInputRubrics =
         criteria.length > 0
           ? criteria
-              .map((criterion, criterionIndex) => {
-                const id =
-                  criterion.operator === 'contradiction'
-                    ? 'contradiction_guard'
-                    : `criterion_${criterionIndex + 1}`;
-                return `          - id: ${id}\n            operator: ${criterion.operator}\n            outcome: ${JSON.stringify(criterion.criteria)}\n            weight: 1`;
-              })
+              .map(
+                (criterion) =>
+                  `            - operator: ${criterion.operator}\n              criteria: ${yamlString(criterion.criteria, 16)}`,
+              )
               .join('\n')
-          : `          - id: reference_match\n            operator: correctness\n            outcome: ${JSON.stringify('Conveys the same key information as the Dexter reference answer.')}\n            weight: 1`;
+          : `            - operator: correctness\n              criteria: "Conveys the same key information as the Dexter reference answer."`;
 
-      return `  - id: ${slug(row.question) || `dexter-row-${index + 1}`}\n    metadata:\n      source_repo: https://github.com/virattt/dexter\n      source_commit: ${env('DEXTER_COMMIT') ?? DEXTER_PINNED_COMMIT}\n      source_file: src/evals/dataset/finance_agent.csv\n      source_row: ${index + 1}\n      question_type: ${JSON.stringify(row.questionType)}\n      expert_time_mins: ${JSON.stringify(row.expertTimeMins)}\n    input: |\n${block(row.question)}\n    expected_output: |\n${block(row.answer)}\n    assertions:\n      - name: dexter-rubric\n        type: llm-grader\n        rubrics:\n${rubricItems}`;
+      return `  - id: ${slug(row.question) || `dexter-row-${index + 1}`}\n    metadata:\n      source_repo: https://github.com/virattt/dexter\n      source_commit: ${env('DEXTER_COMMIT') ?? DEXTER_PINNED_COMMIT}\n      source_file: src/evals/dataset/finance_agent.csv\n      source_row: ${index + 1}\n      question_type: ${JSON.stringify(row.questionType)}\n      expert_time_mins: ${JSON.stringify(row.expertTimeMins)}\n    input: |\n${block(row.question)}\n    expected_output: |\n${block(row.answer)}\n    assertions:\n      - name: dexter-rubric\n        type: code-grader\n        command: [bun, run, ../graders/llm-judge.ts]\n        target:\n          max_calls: 1\n        prompt: |\n          You are evaluating a financial research answer using Dexter rubric metadata.\n\n          The custom input object contains the question, expected answer, actual answer, and Dexter's rubric array.\n          Each rubric item has Dexter's native shape: { operator, criteria }.\n\n          Operator semantics:\n          - correctness: pass the item only if the actual answer positively supports the criteria. Omission or contradiction fails.\n          - contradiction: pass the item if the actual answer does not make a claim that contradicts the criteria. The answer does not need to mention the criteria.\n\n          Return JSON only with this shape:\n          {\n            "score": number between 0 and 1,\n            "assertions": [\n              { "text": "short rubric label", "passed": boolean, "evidence": "brief reason" }\n            ]\n          }\n\n          Custom input object:\n          {{ input_object_json }}\n        input_object:\n          question: ${yamlString(row.question, 12)}\n          expected_answer: ${yamlString(row.answer, 12)}\n          rubric:\n${customInputRubrics}`;
     })
     .join('\n\n');
 
-  return `name: financial-research-agent\ndescription: |\n  Generated AgentV adaptation of Dexter's full public finance_agent.csv dataset.\n  Source: https://github.com/virattt/dexter at commit ${env('DEXTER_COMMIT') ?? DEXTER_PINNED_COMMIT}.\n  The default target is a coding/web research agent evaluated against Dexter's\n  public golden answers, so this suite does not require Dexter's paid Financial\n  Datasets API path. Dexter CSV rubrics are preserved as per-test AgentV\n  llm-grader rubrics with correctness and contradiction operators.\n\nexecution:\n  target: financial-research-agent\n\ntags: [financial-research-agent, dexter, finance, generated]\n\ntests:\n${tests}\n`;
+  return `name: financial-research-agent\ndescription: |\n  Generated AgentV adaptation of Dexter's full public finance_agent.csv dataset.\n  Source: https://github.com/virattt/dexter at commit ${env('DEXTER_COMMIT') ?? DEXTER_PINNED_COMMIT}.\n  The default target is a coding/web research agent evaluated against Dexter's\n  public golden answers, so this suite does not require Dexter's paid Financial\n  Datasets API path. Dexter CSV rubrics are preserved as custom input objects\n  for a reusable LLM-judge code grader.\n\nexecution:\n  target: financial-research-agent\n\ntags: [financial-research-agent, dexter, finance, generated]\n\ntests:\n${tests}\n`;
 }
 
 const args = parseArgs();
