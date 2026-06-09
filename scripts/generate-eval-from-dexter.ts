@@ -9,12 +9,6 @@ type Row = {
   readonly answer: string;
   readonly questionType: string;
   readonly expertTimeMins: string;
-  readonly rubric: string;
-};
-
-type RubricCriterion = {
-  readonly operator: string;
-  readonly criteria: string;
 };
 
 function env(name: string): string | undefined {
@@ -80,26 +74,6 @@ function parseCsv(content: string): string[][] {
   return rows;
 }
 
-function parseRubricCriteria(raw: string): RubricCriterion[] {
-  const criteria: RubricCriterion[] = [];
-  const objectRegex = /\{([\s\S]*?)\}/g;
-  for (const objectMatch of raw.matchAll(objectRegex)) {
-    const body = objectMatch[1] ?? '';
-    const operator = body.match(/['"]operator['"]\s*:\s*(['"])([\s\S]*?)\1/)?.[2]?.trim();
-    const text = body
-      .match(/['"]criteria['"]\s*:\s*(['"])([\s\S]*?)\1/)?.[2]
-      ?.replace(/\\n/g, '\n')
-      .trim();
-    if (operator && text) {
-      criteria.push({ operator, criteria: text });
-    }
-  }
-
-  const correctness = criteria.filter((criterion) => criterion.operator === 'correctness').slice(0, 5);
-  const contradiction = criteria.find((criterion) => criterion.operator === 'contradiction');
-  return contradiction ? [...correctness, contradiction] : correctness;
-}
-
 function block(value: string, indent = 6): string {
   const spaces = ' '.repeat(indent);
   return value
@@ -120,27 +94,11 @@ function slug(value: string): string {
 function render(rows: readonly Row[]): string {
   const tests = rows
     .map((row, index) => {
-      const criteria = parseRubricCriteria(row.rubric);
-      const rubricItems =
-        criteria.length > 0
-          ? criteria
-              .map((criterion, criterionIndex) => {
-                const isContradiction = criterion.operator === 'contradiction';
-                const id = isContradiction ? 'contradiction_guard' : `criterion_${criterionIndex + 1}`;
-                const outcome =
-                  isContradiction
-                    ? `Does not contradict the Dexter reference answer: ${criterion.criteria}`
-                    : criterion.criteria;
-                return `          - id: ${id}\n            outcome: ${JSON.stringify(outcome)}\n            weight: 1`;
-              })
-              .join('\n')
-          : `          - id: reference_match\n            outcome: ${JSON.stringify('Conveys the same key information as the Dexter reference answer.')}\n            weight: 1`;
-
-      return `  - id: ${slug(row.question) || `dexter-row-${index + 1}`}\n    metadata:\n      source_repo: https://github.com/virattt/dexter\n      source_commit: ${env('DEXTER_COMMIT') ?? DEXTER_PINNED_COMMIT}\n      source_file: src/evals/dataset/finance_agent.csv\n      source_row: ${index + 1}\n      question_type: ${JSON.stringify(row.questionType)}\n      expert_time_mins: ${JSON.stringify(row.expertTimeMins)}\n    input: |\n${block(row.question)}\n    expected_output: |\n${block(row.answer)}\n    assertions:\n      - type: rubrics\n        criteria:\n${rubricItems}`;
+      return `  - id: ${slug(row.question) || `dexter-row-${index + 1}`}\n    metadata:\n      source_repo: https://github.com/virattt/dexter\n      source_commit: ${env('DEXTER_COMMIT') ?? DEXTER_PINNED_COMMIT}\n      source_file: src/evals/dataset/finance_agent.csv\n      source_row: ${index + 1}\n      question_type: ${JSON.stringify(row.questionType)}\n      expert_time_mins: ${JSON.stringify(row.expertTimeMins)}\n    input: |\n${block(row.question)}\n    expected_output: |\n${block(row.answer)}`;
     })
     .join('\n\n');
 
-  return `name: financial-research-agent\ndescription: |\n  Generated AgentV adaptation of Dexter's full public finance_agent.csv dataset.\n  Source: https://github.com/virattt/dexter at commit ${env('DEXTER_COMMIT') ?? DEXTER_PINNED_COMMIT}.\n  The default target is a coding/web research agent evaluated against Dexter's\n  public golden answers, so this suite does not require Dexter's paid Financial\n  Datasets API path.\n\nexecution:\n  target: financial-research-agent\n\ntags: [financial-research-agent, dexter, finance, generated]\n\ntests:\n${tests}\n`;
+  return `name: financial-research-agent\ndescription: |\n  Generated AgentV adaptation of Dexter's full public finance_agent.csv dataset.\n  Source: https://github.com/virattt/dexter at commit ${env('DEXTER_COMMIT') ?? DEXTER_PINNED_COMMIT}.\n  The default target is a coding/web research agent evaluated against Dexter's\n  public golden answers, so this suite does not require Dexter's paid Financial\n  Datasets API path. Correctness is graded with the same expected-vs-actual\n  semantics as Dexter's original LLM evaluator.\n\nexecution:\n  target: financial-research-agent\n\ntags: [financial-research-agent, dexter, finance, generated]\n\nassertions:\n  - name: dexter-correctness\n    type: llm-grader\n    prompt: file://../graders/dexter-correctness.md\n\ntests:\n${tests}\n`;
 }
 
 const args = parseArgs();
@@ -160,7 +118,6 @@ const rows = parseCsv(readFileSync(csvPath, 'utf8'))
     answer: row[1],
     questionType: row[2],
     expertTimeMins: row[3],
-    rubric: row[4],
   }));
 
 writeFileSync(args.out, render(rows));
