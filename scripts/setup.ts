@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
@@ -68,6 +68,15 @@ function checkDexterRepo(repoPath: string | undefined): Check[] {
   return checks;
 }
 
+function ensureLocalDirectories(): void {
+  const agentTarget = env('AGENT_TARGET') ?? 'financial-research-agent';
+  if (agentTarget !== 'financial-research-agent') return;
+
+  for (const dir of [env('CODEX_WORKSPACE_DIR'), env('CODEX_LOG_DIR')]) {
+    if (dir) mkdirSync(path.resolve(dir), { recursive: true });
+  }
+}
+
 function providerChecks(): Check[] {
   const agentTarget = env('AGENT_TARGET') ?? 'financial-research-agent';
   const checks: Check[] = [];
@@ -123,6 +132,7 @@ function main() {
   }
 
   if (!process.argv.includes('--check-only')) {
+    ensureLocalDirectories();
     console.log('financial-research-agent AgentV setup check passed.');
     console.log(`Dexter source commit: ${env('DEXTER_COMMIT') ?? DEXTER_PINNED_COMMIT}`);
   }

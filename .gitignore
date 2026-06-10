@@ -4,6 +4,9 @@
 
 node_modules/
 .agentv/runs/
+.agentv/cache.json
+.agentv/codex-workspaces/
+.agentv/logs/
 results/
 tmp/
 

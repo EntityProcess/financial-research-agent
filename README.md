@@ -18,9 +18,10 @@ Dexter's own eval flow at that commit uses:
 - optional sampling with `--sample N`
 - `src/evals/dataset/finance_agent.csv`
 - CSV columns: `Question`, `Answer`, `Question Type`, `Expert time (mins)`, `Rubric`
-- an LLM-as-judge correctness check
+- an LLM-as-judge correctness check, with CSV rubric metadata containing
+  `correctness` and `contradiction` criteria
 
-The committed AgentV eval keeps that fixture shape for every row in the pinned CSV: Dexter questions become AgentV `input`, Dexter answers become `expected_output`, and Dexter rubric criteria become AgentV rubric assertions. The upstream Dexter runner currently does not consume the CSV `Rubric` column; this project does.
+The committed AgentV eval keeps the question/answer fixture shape for every row in the pinned CSV: Dexter questions become AgentV `input`, and Dexter answers become `expected_output`. Dexter's runtime evaluator ignores the CSV `Rubric` column, but this project intentionally preserves those entries as native AgentV `llm-grader` rubrics. The shared prompt in `prompts/dexter-grader.md` receives AgentV's `{{ rubrics_json }}` and `{{ metadata_json }}` structured variables, so the eval does not duplicate question/answer data into grader-only payloads.
 
 By default, the eval does **not** run Dexter. It runs a coding/web research agent against Dexter's public golden answers, so the demo does not require `FINANCIAL_DATASETS_API_KEY`. The real `dexter-agent` target remains available as an optional compatibility target for users who have Dexter's paid data prerequisites configured.
 
@@ -116,7 +117,7 @@ bun run scripts/generate-eval-from-dexter.ts --out evals/financial-research-agen
 
 Use `--sample N --out <path>` only for local experiments or quick generator checks; do not use a sampled file as the committed dataset boundary.
 
-Review generated rubrics before committing. Dexter's rubric field is Python/JSON-like text, so this generator intentionally keeps the conversion conservative.
+Review the generated eval before committing. The generator intentionally keeps the conversion conservative and AgentV-native: it preserves Dexter rubric entries as `{ operator, criteria }`-style `llm-grader` rubric items, uses suite-level source metadata for the pinned CSV, and reuses `prompts/dexter-grader.md` by file reference.
 
 ## Secret Boundary
 
@@ -124,6 +125,6 @@ Setup and target scripts print variable names and missing prerequisite guidance 
 
 Public result synchronization belongs to the downstream `financial-research-agent-evals` work. Before publishing any run artifact, scan it for API keys, provider endpoints, private paths, and sensitive data.
 
-## AgentV Friction Captured
+## AgentV Composition Note
 
-The Dexter adaptation exposed one AgentV follow-up candidate: Dexter's rubric column has explicit `correctness` and `contradiction` operators, while AgentV's built-in `rubrics` grader accepts natural-language outcomes but has no first-class operator field for rubric criteria. This project maps contradiction criteria to "does not contradict..." rubric outcomes for now.
+The Dexter adaptation uses AgentV's native `llm-grader` primitive. Each assertion references `prompts/dexter-grader.md` and passes Dexter CSV rubric entries through `rubrics`, preserving `operator` plus `criteria` so the prompt can distinguish correctness checks from contradiction guards. Suite-level `metadata` carries the pinned Dexter source fields, while per-test metadata only carries row-specific fields such as `source_row`, `question_type`, and `expert_time_mins`.

@@ -13,7 +13,7 @@ type Row = {
 };
 
 type RubricCriterion = {
-  readonly operator: string;
+  readonly operator: 'correctness' | 'contradiction';
   readonly criteria: string;
 };
 
@@ -90,14 +90,13 @@ function parseRubricCriteria(raw: string): RubricCriterion[] {
       .match(/['"]criteria['"]\s*:\s*(['"])([\s\S]*?)\1/)?.[2]
       ?.replace(/\\n/g, '\n')
       .trim();
-    if (operator && text) {
+
+    if ((operator === 'correctness' || operator === 'contradiction') && text) {
       criteria.push({ operator, criteria: text });
     }
   }
 
-  const correctness = criteria.filter((criterion) => criterion.operator === 'correctness').slice(0, 5);
-  const contradiction = criteria.find((criterion) => criterion.operator === 'contradiction');
-  return contradiction ? [...correctness, contradiction] : correctness;
+  return criteria;
 }
 
 function block(value: string, indent = 6): string {
@@ -105,7 +104,10 @@ function block(value: string, indent = 6): string {
   return value
     .trim()
     .split('\n')
-    .map((line) => `${spaces}${line}`)
+    .map((line) => {
+      const trimmed = line.trimEnd();
+      return trimmed ? `${spaces}${trimmed}` : '';
+    })
     .join('\n');
 }
 
@@ -117,6 +119,22 @@ function slug(value: string): string {
     .slice(0, 72);
 }
 
+function yamlString(value: string, indent = 12): string {
+  const text = value.trim();
+  if (!text.includes('\n')) {
+    return JSON.stringify(text);
+  }
+
+  const spaces = ' '.repeat(indent);
+  return `|\n${text
+    .split('\n')
+    .map((line) => {
+      const trimmed = line.trimEnd();
+      return trimmed ? `${spaces}${trimmed}` : '';
+    })
+    .join('\n')}`;
+}
+
 function render(rows: readonly Row[]): string {
   const tests = rows
     .map((row, index) => {
@@ -124,23 +142,18 @@ function render(rows: readonly Row[]): string {
       const rubricItems =
         criteria.length > 0
           ? criteria
-              .map((criterion, criterionIndex) => {
-                const isContradiction = criterion.operator === 'contradiction';
-                const id = isContradiction ? 'contradiction_guard' : `criterion_${criterionIndex + 1}`;
-                const outcome =
-                  isContradiction
-                    ? `Does not contradict the Dexter reference answer: ${criterion.criteria}`
-                    : criterion.criteria;
-                return `          - id: ${id}\n            outcome: ${JSON.stringify(outcome)}\n            weight: 1`;
-              })
+              .map(
+                (criterion, criterionIndex) =>
+                  `          - id: criterion-${criterionIndex + 1}\n            operator: ${criterion.operator}\n            criteria: ${yamlString(criterion.criteria, 14)}`,
+              )
               .join('\n')
-          : `          - id: reference_match\n            outcome: ${JSON.stringify('Conveys the same key information as the Dexter reference answer.')}\n            weight: 1`;
+          : `          - id: criterion-1\n            operator: correctness\n            criteria: "Conveys the same key information as the Dexter reference answer."`;
 
-      return `  - id: ${slug(row.question) || `dexter-row-${index + 1}`}\n    metadata:\n      source_repo: https://github.com/virattt/dexter\n      source_commit: ${env('DEXTER_COMMIT') ?? DEXTER_PINNED_COMMIT}\n      source_file: src/evals/dataset/finance_agent.csv\n      source_row: ${index + 1}\n      question_type: ${JSON.stringify(row.questionType)}\n      expert_time_mins: ${JSON.stringify(row.expertTimeMins)}\n    input: |\n${block(row.question)}\n    expected_output: |\n${block(row.answer)}\n    assertions:\n      - type: rubrics\n        criteria:\n${rubricItems}`;
+      return `  - id: ${slug(row.question) || `dexter-row-${index + 1}`}\n    metadata:\n      source_row: ${index + 1}\n      question_type: ${JSON.stringify(row.questionType)}\n      expert_time_mins: ${JSON.stringify(row.expertTimeMins)}\n    input: |\n${block(row.question)}\n    expected_output: |\n${block(row.answer)}\n    assertions:\n      - name: dexter-rubric\n        type: llm-grader\n        prompt: file://prompts/dexter-grader.md\n        rubrics:\n${rubricItems}`;
     })
     .join('\n\n');
 
-  return `name: financial-research-agent\ndescription: |\n  Generated AgentV adaptation of Dexter's full public finance_agent.csv dataset.\n  Source: https://github.com/virattt/dexter at commit ${env('DEXTER_COMMIT') ?? DEXTER_PINNED_COMMIT}.\n  The default target is a coding/web research agent evaluated against Dexter's\n  public golden answers, so this suite does not require Dexter's paid Financial\n  Datasets API path.\n\nexecution:\n  target: financial-research-agent\n\ntags: [financial-research-agent, dexter, finance, generated]\n\ntests:\n${tests}\n`;
+  return `name: financial-research-agent\ndescription: |\n  Generated AgentV adaptation of Dexter's full public finance_agent.csv dataset.\n  Source: https://github.com/virattt/dexter at commit ${env('DEXTER_COMMIT') ?? DEXTER_PINNED_COMMIT}.\n  The default target is a coding/web research agent evaluated against Dexter's\n  public golden answers, so this suite does not require Dexter's paid Financial\n  Datasets API path. Dexter CSV rubrics are preserved as native llm-grader\n  rubric items with Dexter's operator semantics.\n\nexecution:\n  target: financial-research-agent\n\ntags: [financial-research-agent, dexter, finance, generated]\n\nmetadata:\n  source_repo: https://github.com/virattt/dexter\n  source_commit: ${env('DEXTER_COMMIT') ?? DEXTER_PINNED_COMMIT}\n  source_file: src/evals/dataset/finance_agent.csv\n\ntests:\n${tests}\n`;
 }
 
 const args = parseArgs();
