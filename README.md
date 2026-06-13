@@ -25,6 +25,21 @@ The committed AgentV eval keeps the question/answer fixture shape for every row 
 
 By default, the eval does **not** run Dexter. It runs a coding/web research agent against Dexter's public golden answers, so the demo does not require `FINANCIAL_DATASETS_API_KEY`. The real `dexter-agent` target remains available as an optional compatibility target for users who have Dexter's paid data prerequisites configured.
 
+## Harness and Skill Boundary
+
+This repository mirrors the legal-style harness split:
+
+- **AgentV** is only the eval harness: target selection, execution, results, and grading.
+- **Financial research skills/workflow** are target-agent behavior maintained in `skills/`, `workflows/`, and `prompts/financial-research-system.md`.
+- **Dexter CSV and golden answers** are benchmark fixture/provenance from the pinned public commit. They are not answer sources during benchmark execution.
+- **`dexter-agent`** remains an optional compatibility/reference target for users with Dexter's private prerequisites.
+
+The default public `financial-research-agent` and `codex` targets embed a compact version of the reusable financial-research workflow in `.agentv/targets.yaml` and point back to the canonical prompt/skill files. This keeps the default target behavior explicit without adding provider-specific Dexter internals to AgentV core.
+
+### Dexter attribution and license check
+
+Dexter was inspected at commit `8d9419829f443f84b804d033bb2c3b1fbd788629` for portable workflow ideas, including financial research, DCF, memo, sentiment, tool-use, subagent, and finance-router guidance. That pinned checkout does not include a `LICENSE`, `NOTICE`, or `COPYING` file, so this repository does **not** copy Dexter SKILL.md prose, source code, or provider/API internals. The skill cards here are original, generic public-financial-research guidance; Dexter remains the dataset provenance and optional reference target.
+
 ## Prerequisites
 
 Install AgentV separately.
@@ -85,6 +100,10 @@ Preflight:
 ```bash
 bun run setup
 ```
+
+The public target prompt is defined in `.agentv/targets.yaml` and summarized in
+`prompts/financial-research-system.md`; update the skill/workflow files first
+when changing target-agent research behavior.
 
 Run the full AgentV eval:
 
