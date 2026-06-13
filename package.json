@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "setup": "bun run scripts/setup.ts",
+    "check:dexter-provenance": "bun run scripts/check-dexter-provenance.ts",
     "generate": "bun run scripts/generate-eval-from-dexter.ts",
     "eval": "agentv eval evals/financial-research-agent.eval.yaml --targets .agentv/targets.yaml"
   }
