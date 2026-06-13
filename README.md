@@ -4,6 +4,10 @@ AgentV companion eval project for a public coding/web financial research agent.
 
 This repository is not a fork of Dexter and does not own Dexter's agent code or dataset. It uses Dexter's public `src/evals/` dataset as a pinned benchmark fixture and golden-answer source so the AgentV Dashboard can show a realistic public domain-agent project.
 
+## Baseline Results
+
+See [BASELINE_RESULTS.md](BASELINE_RESULTS.md) for a public narrative report on the financial-research baseline runs, links to raw AgentV artifacts, and the cross-domain AgentV proof point alongside the legal/document-intelligence eval pack.
+
 ## Source Pin
 
 The first public demo is pinned to Dexter commit:
