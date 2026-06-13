@@ -38,7 +38,9 @@ The default public `financial-research-agent` and `codex` targets embed a compac
 
 ### Dexter attribution and license check
 
-Dexter was inspected at commit `8d9419829f443f84b804d033bb2c3b1fbd788629` for portable workflow ideas, including financial research, DCF, memo, sentiment, tool-use, subagent, and finance-router guidance. That pinned checkout does not include a `LICENSE`, `NOTICE`, or `COPYING` file, so this repository does **not** copy Dexter SKILL.md prose, source code, or provider/API internals. The skill cards here are original, generic public-financial-research guidance; Dexter remains the dataset provenance and optional reference target.
+Dexter was inspected at commit `8d9419829f443f84b804d033bb2c3b1fbd788629` for portable workflow ideas, including financial research, DCF, memo, sentiment, tool-use, subagent, and finance-router guidance. That pinned checkout does not include a standalone `LICENSE`, `NOTICE`, or `COPYING` file, and `package.json` does not declare a `license` field, but Dexter's README license section states that the project is MIT licensed. Run `bun run check:dexter-provenance` with `DEXTER_REPO_PATH` set to refresh this evidence.
+
+This repository still does **not** copy Dexter SKILL.md prose, source code, provider/API internals, or private data assumptions. The skill cards here are original, generic public-financial-research guidance; Dexter remains the dataset provenance and optional reference target.
 
 ## Prerequisites
 
