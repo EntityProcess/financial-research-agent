@@ -6,7 +6,7 @@ This repository is not a fork of Dexter and does not own Dexter's agent code or 
 
 ## Baseline Results
 
-See [BASELINE_RESULTS.md](BASELINE_RESULTS.md) for a public narrative report on the financial-research baseline runs, links to raw AgentV artifacts, and the cross-domain AgentV proof point alongside the legal/document-intelligence eval pack.
+See [BASELINE_RESULTS.md](BASELINE_RESULTS.md) for a public narrative report on the financial-research baseline runs, links to raw AgentV artifacts, and the cross-domain AgentV proof point alongside the legal/document-intelligence eval pack. The published dashboard-style static report is served at https://entityprocess.github.io/financial-research-evals/.
 
 ## Source Pin
 
@@ -148,7 +148,7 @@ Review the generated eval before committing. The generator intentionally keeps t
 
 Setup and target scripts print variable names and missing prerequisite guidance only. They must not print resolved secret values, private endpoints, or Bitwarden-derived output.
 
-Public result synchronization belongs to the downstream `financial-research-agent-evals` work. Before publishing any run artifact, scan it for API keys, provider endpoints, private paths, and sensitive data.
+Public result synchronization belongs to the downstream `financial-research-evals` work. Before publishing any run artifact, scan it for API keys, provider endpoints, private paths, and sensitive data.
 
 ## AgentV Composition Note
 
